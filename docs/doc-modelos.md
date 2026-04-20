@@ -78,6 +78,7 @@ erDiagram
         string marca
         string modelo
         int quantidade
+        string status
     }
     
     VISITA_TECNICA {
@@ -91,11 +92,16 @@ erDiagram
     
     CONTA_RECEBER {
         int id PK
-        float valor
+        float valor_original
+        float multa
+        float juros
+        float valor_total
         date data_emissao
         date data_vencimento
         date data_pagamento
         string status_pagamento
+        string forma_pagamento
+        string transacao_id
         int os_id FK
     }
     
@@ -153,6 +159,7 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | e-mail | e-mail do usuário utilizado para login  | VARCHAR | 150 | Unique / Not Null |
 | senha  | Senha criptografada do usuário | VARCHAR | 255 | Not Null |
 
+
 |   Tabela   | CLIENTE |
 | ---------- | ----------- |
 | Descrição  | Armazena as informações gerais dos clientes da assistência técnica. |
@@ -166,10 +173,12 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | contato | Telefone para contato | VARCHAR | 20 | --- |
 | tipo | Classificação do cliente (PF ou PJ) | VARCHAR | 2 | com CHECK (tipo IN ('PF','PJ')) |
 
+
 |   Tabela   | CLIENTE_PF |
 | ---------- | ----------- |
 | Descrição  | Armazena informações específicas de clientes do tipo Pessoa Física. |
 | Observação | Todo cliente PF deve ter um registro correspondente na tabela Cliente.|
+
 
 |  Nome         | Descrição                        | Tipo de Dado | Tamanho | Restrições de Domínio |
 | ------------- | -------------------------------- | ------------ | ------- | --------------------- |
@@ -231,6 +240,8 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | setor | Nível hierárquico (1-5) | INT | --- | CHECK (nivel_experiencia BETWEEN 1 AND 5) |
 |bonus_fixo | Bônus mensal fixo | DECIMAL(10,2) | --- |	DEFAULT 0.00 |
 
+---
+
 |   Tabela   | ORDEM_SERVICO |
 | ---------- | ----------- |
 | Descrição  | Núcleo do sistema. Registra cada solicitação de serviço, seu status, valor total, datas de abertura e encerramento, além de vincular cliente solicitante e técnico responsável. |
@@ -248,6 +259,8 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | cliente_id | Referência ao cliente solicitante | INT | --- | FK para CLIENTE(id) / NOT NULL |
 | tecnico_id | Referência ao técnico responsável | INT | --- | FK para TECNICO(id) |
 
+---
+
 |   Tabela   | EQUIPAMENTO |
 | ---------- | ----------- |
 | Descrição  | Representa os itens que serão utilizados nos serviços prestados. |
@@ -261,6 +274,9 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | marca | Marca do equipamento | VARCHAR | 20 |	--- |
 | modelo | Modelo do equipamento | VARCHAR | 20 | --- |
 | quantidade | Quantidade disponível em estoque | INT | --- | DEFAULT 1 / CHECK (quantidade >= 0) |
+| status | Situação do equipamento | VARCHAR | 10 | CHECK (status IN ('ATIVO','DESATIVADO')) / DEFAULT 'ATIVO' |
+
+---
 
 |   Tabela   | ORDEM_SERVICO_EQUIPAMENTO |
 | ---------- | ----------- |
@@ -272,6 +288,8 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | os_id | Referência à Ordem de Serviço | INT | --- | FK para ORDEM_SERVICO(id) / PK Composite |
 | equipamento_id | Referência ao Equipamento  | INT | --- | FK para EQUIPAMENTO(id) / PK Composite |
 | quantidade | Quantidade do equipamento utilizada na OS | INT | --- | DEFAULT 1 / CHECK (quantidade > 0) |
+
+---
 
 |   Tabela   | VISITA_TECNICA |
 | ---------- | ----------- |
@@ -287,6 +305,8 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 | os_id | Referência à Ordem de Serviço | INT | --- | FK para ORDEM_SERVICO(id) / NOT NULL |
 | tecnico_id | Referência ao técnico responsável | INT | --- | FK para TECNICO(id)/ NOT NULL |
 
+---
+
 |   Tabela   | CONTA_RECEBER |
 | ---------- | ----------- |
 | Descrição  | Gerada automaticamente ao encerrar uma OS, registra o valor a ser pago pelo cliente e controla o status do pagamento. |
@@ -295,9 +315,13 @@ Conta a Receber	| Gerada automaticamente ao encerrar uma OS, registra o valor a 
 |  Nome         | Descrição                        | Tipo de Dado | Tamanho | Restrições de Domínio |
 | ------------- | -------------------------------- | ------------ | ------- | --------------------- |
 | id | Identificador único do pagamento | SERIAL | --- | PK / Identity |
-| valor | Valor a ser recebido do cliente  | DECIMAL(10,2) | --- | NOT NULL / CHECK (valor > 0) |
+| valor_original | Valor original da OS (sem multa/juros)  | DECIMAL(10,2) | --- | NOT NULL / CHECK (valor > 0) |
+| multa | Multa fixa de 2% sobre valor_original (se vencido) | DECIMAL(10,2) | --- | DEFAULT 0.00 / CHECK (multa >= 0) |
+| joros | Juros de 0,33% ao dia de atraso | DECIMAL(10,2) | --- | DEFAULT 0.00 / CHECK (juros >= 0) |
 | data_emissao  | Data de emissão da conta | DATE | --- | NOT NULL / DEFAULT CURRENT_DATE |
 | data_vencimento  | Data de vencimento da conta | DATE | --- | NOT NULL |
 | data_pagamento  | Data em que a conta foi paga | DATE | --- | --- |
 | status_pagamento | Situação atual do pagamento | VARCHAR | 10 | CHECK (status_pagamento IN ('PENDENTE', 'PAGO', 'VENCIDO', 'CANCELADO')) / DEFAULT 'PENDENTE' |
+| forma_pagamento | Forma de pagamento utilizada | VARCHAR | 20 | CHECK (forma_pagamento IN ('CARTAO','BOLETO','PIX','DINHEIRO')) |
+| transançao_id | ID da transação no gateway de pagamento | VARCHAR | 100 | --- |
 | os_id | Referência à Ordem de Serviço | INT | --- | FK para ORDEM_SERVICO(id) / NOT NULL |
